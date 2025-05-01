@@ -1,0 +1,248 @@
+<div class="cart-page">
+    <h1 class="mb-4">Shopping Cart</h1>
+
+    <div id="cartContent">
+        <!-- Loading state -->
+        <div id="loadingState" class="text-center py-5 d-none">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+
+        <!-- Empty cart state -->
+        <div id="emptyCart" class="text-center py-5 d-none">
+            <h3 class="mb-4">Your cart is empty</h3>
+            <p class="lead mb-4">Looks like you haven't added any items to your cart yet.</p>
+            <a href="/products" class="btn btn-primary btn-lg">Continue Shopping</a>
+        </div>
+
+        <!-- Cart items -->
+        <div id="cartItems" class="d-none">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Price</th>
+                            <th>Quantity</th>
+                            <th>Total</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="cartItemsBody">
+                        <!-- Cart items will be inserted here -->
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="3" class="text-end"><strong>Subtotal:</strong></td>
+                            <td id="cartSubtotal" class="text-end"></td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-4">
+                <a href="/products" class="btn btn-outline-primary">Continue Shopping</a>
+                <button id="checkoutBtn" class="btn btn-primary btn-lg">Proceed to Checkout</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const cartContent = document.getElementById('cartContent');
+        const loadingState = document.getElementById('loadingState');
+        const emptyCart = document.getElementById('emptyCart');
+        const cartItems = document.getElementById('cartItems');
+        const cartItemsBody = document.getElementById('cartItemsBody');
+        const cartSubtotal = document.getElementById('cartSubtotal');
+        const checkoutBtn = document.getElementById('checkoutBtn');
+
+        // Show loading state
+        loadingState.classList.remove('d-none');
+
+        // Fetch cart data
+        fetch('/api/cart')
+            .then(response => {
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        window.location.href = '/login';
+                        throw new Error('Please login to view your cart');
+                    }
+                    throw new Error('Failed to fetch cart');
+                }
+                return response.json();
+            })
+            .then(data => {
+                loadingState.classList.add('d-none');
+
+                if (data.items.length === 0) {
+                    emptyCart.classList.remove('d-none');
+                    return;
+                }
+
+                cartItems.classList.remove('d-none');
+                cartItemsBody.innerHTML = data.items.map(item => `
+                    <tr data-item-id="${item.id}">
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <img src="${item.image_url}" alt="${item.name}" class="img-thumbnail me-3" style="width: 64px; height: 64px; object-fit: cover;">
+                                <div>
+                                    <h5 class="mb-0">${item.name}</h5>
+                                    <small class="text-muted">${item.description}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>$${parseFloat(item.price).toFixed(2)}</td>
+                        <td>
+                            <div class="input-group" style="width: 120px;">
+                                <button class="btn btn-outline-secondary decrease-quantity" type="button">-</button>
+                                <input type="number" class="form-control text-center quantity-input" value="${item.quantity}" min="1" max="${item.stock}">
+                                <button class="btn btn-outline-secondary increase-quantity" type="button">+</button>
+                            </div>
+                        </td>
+                        <td class="text-end">$${(parseFloat(item.price) * item.quantity).toFixed(2)}</td>
+                        <td>
+                            <button class="btn btn-outline-danger remove-item">
+                                X
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+
+                cartSubtotal.textContent = `$${parseFloat(data.subtotal).toFixed(2)}`;
+
+                // Add event listeners for quantity buttons
+                document.querySelectorAll('.decrease-quantity').forEach(button => {
+                    button.addEventListener('click', function () {
+                        const input = this.parentElement.querySelector('.quantity-input');
+                        const currentValue = parseInt(input.value);
+                        if (currentValue > 1) {
+                            input.value = currentValue - 1;
+                            updateQuantity(input);
+                        }
+                    });
+                });
+
+                document.querySelectorAll('.increase-quantity').forEach(button => {
+                    button.addEventListener('click', function () {
+                        const input = this.parentElement.querySelector('.quantity-input');
+                        const currentValue = parseInt(input.value);
+                        const max = parseInt(input.max);
+                        if (currentValue < max) {
+                            input.value = currentValue + 1;
+                            updateQuantity(input);
+                        }
+                    });
+                });
+
+                // Add event listeners for quantity inputs
+                document.querySelectorAll('.quantity-input').forEach(input => {
+                    input.addEventListener('change', function () {
+                        updateQuantity(this);
+                    });
+                });
+
+                // Add event listeners for remove buttons
+                document.querySelectorAll('.remove-item').forEach(button => {
+                    button.addEventListener('click', function () {
+                        const row = this.closest('tr');
+                        const itemId = row.dataset.itemId;
+                        removeItem(itemId, row);
+                    });
+                });
+            })
+            .catch(error => {
+                loadingState.classList.add('d-none');
+                cartContent.innerHTML = `
+                    <div class="alert alert-danger" role="alert">
+                        ${error.message}
+                    </div>
+                `;
+            });
+
+        // Function to update quantity
+        async function updateQuantity(input) {
+            const row = input.closest('tr');
+            const itemId = row.dataset.itemId;
+            const quantity = parseInt(input.value);
+            const originalValue = input.value;
+
+            try {
+                input.disabled = true;
+                const response = await fetch(`/api/cart/items/${itemId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ quantity })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Failed to update quantity');
+                }
+
+                // Update row total
+                const price = parseFloat(row.querySelector('td:nth-child(2)').textContent.replace('$', ''));
+                row.querySelector('td:nth-child(4)').textContent = `$${(price * quantity).toFixed(2)}`;
+
+                // Update cart subtotal
+                const newSubtotal = Array.from(document.querySelectorAll('tr[data-item-id]'))
+                    .reduce((total, row) => {
+                        const price = parseFloat(row.querySelector('td:nth-child(2)').textContent.replace('$', ''));
+                        const quantity = parseInt(row.querySelector('.quantity-input').value);
+                        return total + (price * quantity);
+                    }, 0);
+                cartSubtotal.textContent = `$${newSubtotal.toFixed(2)}`;
+            } catch (error) {
+                console.error('Error:', error);
+                input.value = originalValue;
+                alert(error.message);
+            } finally {
+                input.disabled = false;
+            }
+        }
+
+        // Function to remove item
+        async function removeItem(itemId, row) {
+            try {
+                const response = await fetch(`/api/cart/items/${itemId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Failed to remove item');
+                }
+
+                row.remove();
+
+                // Update cart subtotal
+                const newSubtotal = Array.from(document.querySelectorAll('tr[data-item-id]'))
+                    .reduce((total, row) => {
+                        const price = parseFloat(row.querySelector('td:nth-child(2)').textContent.replace('$', ''));
+                        const quantity = parseInt(row.querySelector('.quantity-input').value);
+                        return total + (price * quantity);
+                    }, 0);
+                cartSubtotal.textContent = `$${newSubtotal.toFixed(2)}`;
+
+                // Show empty cart if no items left
+                if (document.querySelectorAll('tr[data-item-id]').length === 0) {
+                    cartItems.classList.add('d-none');
+                    emptyCart.classList.remove('d-none');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert(error.message);
+            }
+        }
+
+        // Checkout button handler
+        checkoutBtn.addEventListener('click', function () {
+            window.location.href = '/checkout';
+        });
+    });
+</script>

@@ -1,0 +1,147 @@
+<div class="product-detail-page py-5">
+    <div class="container">
+        <div class="row">
+            <!-- Product Image -->
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <img src="<%= product.image_url %>" class="card-img-top" alt="<%= product.name %>">
+                </div>
+            </div>
+
+            <!-- Product Info -->
+            <div class="col-md-6">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/">Home</a></li>
+                        <li class="breadcrumb-item"><a href="/products">Products</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">
+                            <%= product.name %>
+                        </li>
+                    </ol>
+                </nav>
+
+                <h1 class="mb-3">
+                    <%= product.name %>
+                </h1>
+
+                <div class="mb-4">
+                    <h2 class="text-primary">$<%= Number(product.price).toFixed(2) %>
+                    </h2>
+                </div>
+
+                <div class="mb-4">
+                    <h5>Description</h5>
+                    <p class="lead">
+                        <%= product.description %>
+                    </p>
+                </div>
+
+                <div class="mb-4">
+                    <h5>Stock Status</h5>
+                    <% if (product.stock> 0) { %>
+                        <span class="badge bg-success">In Stock (<%= product.stock %> available)</span>
+                        <% } else { %>
+                            <span class="badge bg-danger">Out of Stock</span>
+                            <% } %>
+                </div>
+
+                <div class="mb-4">
+                    <h5>Category</h5>
+                    <span class="badge bg-secondary">
+                        <%= product.category %>
+                    </span>
+                </div>
+
+                <% if (product.stock> 0) { %>
+                    <div class="mb-4">
+                        <h5>Quantity</h5>
+                        <div class="input-group" style="width: 150px;">
+                            <button class="btn btn-outline-secondary" type="button" id="decreaseQuantity">-</button>
+                            <input type="number" class="form-control text-center" id="quantity" value="1" min="1"
+                                max="<%= product.stock %>">
+                            <button class="btn btn-outline-secondary" type="button" id="increaseQuantity">+</button>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary btn-lg" id="addToCartBtn">
+                            Add to Cart
+                        </button>
+                    </div>
+                    <% } else { %>
+                        <div class="alert alert-warning">
+                            This product is currently out of stock. Please check back later.
+                        </div>
+                        <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const quantityInput = document.getElementById('quantity');
+        const decreaseBtn = document.getElementById('decreaseQuantity');
+        const increaseBtn = document.getElementById('increaseQuantity');
+        const addToCartBtn = document.getElementById('addToCartBtn');
+
+        if (decreaseBtn && increaseBtn) {
+            decreaseBtn.addEventListener('click', function () {
+                const currentValue = parseInt(quantityInput.value);
+                if (currentValue > 1) {
+                    quantityInput.value = currentValue - 1;
+                }
+            });
+
+            increaseBtn.addEventListener('click', function () {
+                const currentValue = parseInt(quantityInput.value);
+                const maxValue = parseInt(quantityInput.max);
+                if (currentValue < maxValue) {
+                    quantityInput.value = currentValue + 1;
+                }
+            });
+        }
+
+        if (addToCartBtn) {
+            addToCartBtn.addEventListener('click', async function () {
+                const productId = '<%= product.id %>';
+                const quantity = parseInt(quantityInput.value);
+                const originalText = this.innerHTML;
+
+                try {
+                    this.disabled = true;
+                    this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Adding...';
+
+                    const response = await fetch('/api/cart/items', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            productId: productId,
+                            quantity: quantity
+                        })
+                    });
+
+                    if (response.ok) {
+                        this.innerHTML = '<i class="bi bi-check-lg"></i> Added to Cart!';
+                        setTimeout(() => {
+                            this.innerHTML = originalText;
+                            this.disabled = false;
+                        }, 2000);
+                    } else {
+                        const error = await response.json();
+                        throw new Error(error.message || 'Failed to add to cart');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    this.innerHTML = '<i class="bi bi-x-lg"></i> Failed to Add';
+                    setTimeout(() => {
+                        this.innerHTML = originalText;
+                        this.disabled = false;
+                    }, 2000);
+                }
+            });
+        }
+    });
+</script>

@@ -1,0 +1,79 @@
+/* General Styles */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+/* Hero Section */
+.hero-section {
+    background-color: #f8f9fa;
+    padding: 4rem 0;
+    margin-bottom: 2rem;
+}
+
+.hero-section img {
+    max-height: 400px;
+    object-fit: cover;
+}
+
+/* Product Cards */
+.card {
+    transition: transform 0.2s ease-in-out;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.card-img-top {
+    height: 200px;
+    object-fit: cover;
+}
+
+/* Navigation */
+.navbar {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+    font-weight: bold;
+}
+
+/* Footer */
+footer {
+    margin-top: auto;
+}
+
+/* Products Page */
+.products-page .card {
+    margin-bottom: 1.5rem;
+}
+
+.products-count {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+/* Filter Sidebar */
+.filter-sidebar .card {
+    position: sticky;
+    top: 1rem;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 2rem 0;
+    }
+
+    .hero-section img {
+        margin-top: 2rem;
+    }
+}

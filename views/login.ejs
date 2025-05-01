@@ -1,0 +1,75 @@
+<div class="login-page py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5">
+                <div class="card shadow">
+                    <div class="card-body p-5">
+                        <h1 class="text-center mb-4">Login</h1>
+
+                        <!-- Alert for errors -->
+                        <% if (locals.error) { %>
+                            <div class="alert alert-danger" role="alert">
+                                <%= error %>
+                            </div>
+                            <% } %>
+
+                                <form action="/api/auth/login" method="POST">
+                                    <div class="mb-3">
+                                        <label for="email" class="form-label">Email address</label>
+                                        <input class="form-control" id="email" name="email" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="password" class="form-label">Password</label>
+                                        <input type="password" class="form-control" id="password" name="password"
+                                            required>
+                                    </div>
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-primary btn-lg">Login</button>
+                                    </div>
+                                </form>
+
+                                <div class="text-center mt-4">
+                                    <p class="mb-0">Don't have an account? <a href="/register">Register</a></p>
+                                </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('loginForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        try {
+            const formData = new FormData(this);
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: formData.get('email'),
+                    password: formData.get('password')
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Redirect to products page on success
+                window.location.href = '/products';
+            } else {
+                // Show error message
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'alert alert-danger';
+                errorDiv.textContent = data.message || 'Login failed. Please try again.';
+                this.insertBefore(errorDiv, this.firstChild);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred during login. Please try again.');
+        }
+    });
+</script>
